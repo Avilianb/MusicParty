@@ -125,3 +125,50 @@ Python 侧：`qq-backend/mp_fetch.py`，子命令 `search|song|fetch|list|lyric|
 1. 面板：`bash /tmp/setup-build-env.sh`（服务器侧 Maven，一次性）→ 改 `panel/**`、`qq-backend/mp_*.py` → 重建镜像 → 按 §9.2 的 `docker run` 重建容器。
 2. MusicParty：本地 `npm run build` + `cp -r music-party-web/dist/* src/main/resources/static/` → `tar | ssh` 同步 → `mvn package` → `podman build` → `systemctl --user restart music-party`。
 3. 首次登录：打开登录页扫码，`/mp/stats` 的 `credential.state` 变为 `ok` 即生效。
+
+## 10. 部署后补充修复（2026-09-14 当晚）
+
+下列问题都是"部署后实测才发现"的，记录原因与对策，避免下次回归：
+
+| # | 现象 | 根因 | 修复 |
+| --- | --- | --- | --- |
+| 1 | 扫码登录页「生成二维码」点了没反应 | panel 全局 CSP 为 `script-src 'self'`，页面里的内联 `<script>` 被浏览器直接丢弃（headless 实测：脚本根本没执行） | 登录页脚本抽成同源外链 `/mp/login.js`；**不能**放开 CSP |
+| 2 | 外链脚本仍 401 | `<script src>` 不继承页面的 `?token=` 查询串 | 服务端渲染页面时把 token 拼进 `login.js?token=...` |
+| 3 | 点了按钮只显示"等待扫码"，没有二维码 | `/mp/login/start` 立即返回，此时 `qr` 仍为 null（python 子进程稍后才产出） | 轮询里检测到 `qr` 且页面还没图时补画 |
+| 4 | `/mp/audio` 在登录被拒时返回 502 upstream | `classifyError` 只认「扫码登录/过期/Cookie」，「所有音质均无法获取」被归到 upstream | 关键词扩到「重新登录/无法获取」→ 503 credential |
+| 5 | 刷新失败导致整条链路判死（连搜索都用不了） | `ensure()` 刷新失败即抛 `CredentialDead` | 刷新失败回退原始 cookie（搜索/歌单/详情仍可用，取链接才被拒） |
+| 6 | `provider.json` 里的 cookie 缺 `psrf_refresh_key` / `psrf_musickey_expiretime` | `cookie_updates()` 未写这两个键 | 补齐读写（QQ 的 refresh 只认扫码时发放的刷新令牌，cookie 形态无法续期，但字段齐全能避免误判） |
+| 7 | 歌手→专辑列表全是空标题、0 首 | `mp_fetch.py` 的 `al` 分支 name/cover 恒空；歌手专辑项 `total_num` 恒 0 | 专辑名/封面查 `album.get_detail`；曲目数用 `album.get_song(albumId, num=1).total_num` 并发补 |
+| 8 | `/party/` 一度返回别的站点页面 | 换 `src/main/resources/static` 时清空了 `target`，旧 jar 不含静态资源，Spring 落到默认映射 | 重新 `mvn package` + 重建镜像 |
+
+配套加固：
+
+- `deploy/panel/entrypoint.sh`：root 启动则 `chown` 后 `exec runuser -u node`，非 root 直接 `exec` —— 两种启动方式都保证 node 进程非 root。
+- `requirements.txt` 固定 `qqmusic-api-python==0.7.3`（与线上 venv 一致，避免 `>=0.7` 漂移）。
+- `deploy-amdl-home.sh` 的 `AMDL_ALLOWED_HOSTS` 默认值补上 `127.0.0.1,localhost`（MusicParty 后端经回环调用 `/mp/*`，Host 是回环地址否则 403）。
+- 未做端到端验证的边界（无第二次刷新载荷、无失效 cookie 的播放链接）见 §11。
+
+## 11. 验证边界（截至本次交付）
+
+已验证（服务器实测，均为真实请求）：
+
+- panel 单测：`node --test test/*.test.js` → 137/137 通过（含 `/mp/*` 的 token 门、Range/206、LRU、并发去重）。
+- Java：`mvn test` → `Tests run: 46, Failures: 0, Errors: 0, Skipped: 0`；应用在服务器启动、`/party/` 出 200。
+- 搜索链路：`/party/api/search/qq/晴天`、`/party/api/user/search/qq/周杰伦`、`/party/api/user/playlists/qq/ar:…`、`/party/api/playlist/songs/qq/pl:…` 全部返回真实 QQ 数据（专辑名/封面/曲目数齐全）。
+- 静态与实时：`/party/` 200 + 资源指纹匹配新构建；`/party/ws` 握手 101。
+- 缓存服务：注入 fixture 音频后 200（102400B）、`Range: bytes=100-199` → 206 且字节逐一比对一致；重启容器后索引重建仍命中。
+- 错误映射：登录态被拒 → `/mp/audio` 503 `{"error":"credential"}`；Host 不在白名单 → 403；token 缺失/错误 → 401。
+- 权限：panel 容器 PID 1 即 `node`（uid 1000，实测无 root 进程）；music-party 容器 `uid=1000(roo)`（rootless podman + keep-id）。
+
+**未验证（阻塞于一次人工扫码）**：
+
+1. `/mp/audio` 首次下载落盘 FLAC → 二次命中不再下载；
+2. 浏览器端到端：搜索 → 入队 → `<audio>` 出 FLAC；
+3. `/radio/stream` 的 ffmpeg 从内网 `/mp/audio` 拉流转码。
+
+原因：QQ 的播放链接接口必须有效登录态（`get_song_urls` 匿名返回"登录凭证已过期"），
+而现有 cookie 的刷新令牌只存在于扫码那一刻，无法离线续期。
+扫码入口：`https://home.netr0.com/music/mp/login?token=<provider.json 的 mp.token>`。
+
+扫码完成后补做：`/mp/audio/{mid}` 首次下载计时与落盘、二次 200 命中、`/data/mp-cache` 文件与 mtime、
+`/radio/stream` 抽 3 秒读出音频（`ffprobe`）。这三项通过后，本 spec 视为全部验收完成。
