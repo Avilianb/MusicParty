@@ -5,7 +5,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.thornex.musicparty.config.AppProperties;
 import org.thornex.musicparty.dto.PlayerState;
 import org.thornex.musicparty.dto.SettingsSnapshot;
-import org.thornex.musicparty.service.api.NeteaseMusicApiService;
+import org.thornex.musicparty.service.stream.LiveStreamService;
 
 import java.util.List;
 
@@ -17,15 +17,11 @@ class MusicPlayerServiceSettingsTest {
     private MusicPlayerService build() {
         return new MusicPlayerService(
                 List.of(),
-                mock(org.thornex.musicparty.service.UserService.class),
-                mock(org.thornex.musicparty.service.LocalCacheService.class),
-                mock(org.thornex.musicparty.service.stream.LiveStreamService.class),
+                mock(UserService.class),
+                mock(LiveStreamService.class),
                 mock(MusicQueueManager.class),
                 mock(ApplicationEventPublisher.class),
-                new AppProperties(),
-                mock(NeteaseMusicApiService.class),
-                mock(PrivateDjService.class)
-        );
+                new AppProperties());
     }
 
     @Test

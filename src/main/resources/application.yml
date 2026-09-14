@@ -1,5 +1,8 @@
 server:
   port: 8080
+  # 子路径部署（例如 nginx 反代到 https://host/party/）时设为 /party；本地或站点根部署留空
+  servlet:
+    context-path: ${APP_CONTEXT_PATH:}
 
 # Logging configuration
 logging:
@@ -16,20 +19,16 @@ app:
     base-url: ${BASE_URL:http://localhost:8080}
     author-name: ${APP_AUTHOR_NAME:ThorNex}
     back-words: ${APP_BACK_WORDS:THORNEX}
-    netease:
-      # The base URL of your deployed NeteaseCloudMusicApi instance
-      base-url: ${NETEASE_API_URL:http://netease-api:3000}
-      cookie: ${NETEASE_COOKIE:}
-      quality: ${NETEASE_QUALITY:exhigh}
-      enabled: ${NETEASE_ENABLED:true}
-    bilibili:
-      # Bilibili API base URL, it's public
-      base-url: "https://api.bilibili.com"
-      # 完整 Cookie（可选）：浏览器登录 B站后复制的完整 Cookie 串，含 buvid3/SESSDATA/bili_jct 等。
-      # 不填仅 B站源不可用，不影响其他音乐源。
-      cookie: ${BILIBILI_COOKIE:}
-      enabled: ${BILIBILI_ENABLED:true}
-      max-duration-minutes: ${BILIBILI_MAX_DURATION_MINUTES:10}
+    mp:
+      # 自建音源（自己服务器上的 QQ 音乐 API，panel 的 /mp/* 路由）
+      # base-url: 容器/本机内网地址，后端调用元数据、预热、歌词走它
+      base-url: ${MP_API_URL:http://127.0.0.1:8321}
+      # public-base-url: 浏览器可达地址（可为空 → 回退 base-url）。反代场景填 nginx 上的对外地址
+      public-base-url: ${MP_PUBLIC_URL:}
+      # 服务端 /mp/* 的访问令牌（provider.json 中 mp.token）
+      token: ${MP_API_TOKEN:}
+      enabled: ${MP_ENABLED:true}
+      timeout-seconds: ${MP_TIMEOUT_SECONDS:10}
     queue:
       max-size: ${QUEUE_MAX_SIZE:1000}
       history-size: ${QUEUE_HISTORY_SIZE:50}
@@ -41,8 +40,6 @@ app:
       max-history-size: ${CHAT_HISTORY_LIMIT:1000}
       min-interval-ms: ${CHAT_MIN_INTERVAL:1000}
       max-message-length: ${CHAT_MAX_LENGTH:200}
-    cache:
-      max-size: ${CACHE_MAX_SIZE:1GB}
     stream:
       max-clients: ${STREAM_MAX_CLIENTS:100}
       buffer-chunks: ${STREAM_BUFFER_CHUNKS:32}

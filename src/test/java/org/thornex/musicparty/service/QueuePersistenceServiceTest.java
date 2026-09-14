@@ -33,11 +33,9 @@ class QueuePersistenceServiceTest {
         tmp.deleteOnExit();
         AppProperties props = new AppProperties();
         props.getQueue().setPersistenceFile(tmp.getAbsolutePath());
-        props.getPrivateDj().setMode("DJ");
-        props.getPrivateDj().setFillBlankEnabled(true);
-        props.getNetease().setEnabled(true);
-        props.getBilibili().setEnabled(false);
         props.getQueue().setMaxSize(500);
+        props.getChat().setMaxMessageLength(180);
+        props.getMp().setEnabled(false);
 
         MusicQueueManager qm = mock(MusicQueueManager.class);
         when(qm.getQueueSnapshot()).thenReturn(List.of());
@@ -63,11 +61,9 @@ class QueuePersistenceServiceTest {
         assertTrue(snap.player().voteSkipEnabled());
         assertEquals("room123", snap.roomPassword());
         assertTrue(snap.streamEnabled());
-        assertEquals("DJ", snap.privateDj().mode());
-        assertTrue(snap.privateDj().fillBlankEnabled());
         assertEquals(500, snap.systemConfig().maxQueueSize());
-        assertTrue(snap.systemConfig().neteaseEnabled());
-        assertFalse(snap.systemConfig().bilibiliEnabled());
+        assertEquals(180, snap.systemConfig().maxChatMessageLength());
+        assertFalse(snap.systemConfig().mpEnabled());
     }
 
     @Test
@@ -103,16 +99,16 @@ class QueuePersistenceServiceTest {
         tmp.deleteOnExit();
         AppProperties props = new AppProperties();
         props.getQueue().setPersistenceFile(tmp.getAbsolutePath());
+        props.getMp().setEnabled(false); // 默认 true，必须由文件里的 false/true 覆盖
 
         String settings = "{"
                 + "\"player\":{\"playMode\":\"SHUFFLE\",\"fairShuffle\":true,\"allowOfflineShuffle\":true,"
                 + "\"voteSkipEnabled\":true,\"voteSkipThreshold\":0.75,\"voteSkipWaitTime\":20,"
                 + "\"pauseLocked\":true,\"skipLocked\":true,\"playModeLocked\":true},"
                 + "\"roomPassword\":\"room123\",\"streamEnabled\":true,"
-                + "\"privateDj\":{\"mode\":\"DJ\",\"fillBlankEnabled\":true,\"joinQueueEnabled\":true,\"custodyEnabled\":true},"
                 + "\"systemConfig\":{\"maxQueueSize\":500,\"maxHistorySize\":100,\"maxUserSongs\":50,"
                 + "\"maxPlaylistImportSize\":200,\"maxChatHistorySize\":5000,\"minChatIntervalMs\":500,"
-                + "\"neteaseEnabled\":true,\"bilibiliEnabled\":false,\"bilibiliMaxDurationMinutes\":15}"
+                + "\"mpEnabled\":true,\"maxChatMessageLength\":180}"
                 + "}";
         Files.writeString(tmp.toPath(), "{\"queue\":[],\"history\":[],\"chatHistory\":[],\"settings\":" + settings + "}");
 
@@ -144,11 +140,8 @@ class QueuePersistenceServiceTest {
         assertEquals(200, props.getPlayer().getMaxPlaylistImportSize());
         assertEquals(5000, props.getChat().getMaxHistorySize());
         assertEquals(500L, props.getChat().getMinIntervalMs());
-        assertTrue(props.getNetease().isEnabled());
-        assertFalse(props.getBilibili().isEnabled());
-        assertEquals(15, props.getBilibili().getMaxDurationMinutes());
-        assertEquals("DJ", props.getPrivateDj().getMode());
-        assertTrue(props.getPrivateDj().isFillBlankEnabled());
+        assertEquals(180, props.getChat().getMaxMessageLength());
+        assertTrue(props.getMp().isEnabled());
     }
 
     @Test

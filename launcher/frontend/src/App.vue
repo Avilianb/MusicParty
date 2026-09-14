@@ -10,11 +10,10 @@ const config = reactive({
   adminPassword: '',
   authorName: 'ThorNex',
   backWords: 'THORNEX',
-  neteaseCookie: '',
-  neteaseQuality: 'exhigh',
-  neteaseEnabled: true,
-  biliCookie: '',
-  bilibiliEnabled: true,
+  mpApiUrl: 'http://127.0.0.1:8321',
+  mpPublicUrl: 'https://home.netr0.com/music',
+  mpToken: '',
+  mpEnabled: true,
   queueMaxSize: 1000,
   queueHistorySize: 50,
   queueMaxUserSongs: 100,
@@ -22,7 +21,6 @@ const config = reactive({
   chatMaxHistorySize: 1000,
   chatMinIntervalMs: 1000,
   chatMaxMessageLength: 200,
-  cacheMaxSize: '1GB',
   authRateLimitEnabled: true,
   authMaxAttempts: 5,
   authWindowSeconds: 60,
@@ -34,12 +32,10 @@ const logs = ref([]);
 const logContainer = ref(null);
 const activeTab = ref('basic');
 const serviceStatuses = reactive({
-  NETEASE_API: false,
   JAVA_SERVER: false
 });
 
 const isJavaReady = ref(false);
-const isApiReady = ref(false);
 
 const systemUrl = computed(() => {
   const host = config.serverIp === '0.0.0.0' ? '127.0.0.1' : config.serverIp;
@@ -56,7 +52,6 @@ onMounted(async () => {
       const statuses = await GetServiceStatuses();
       Object.assign(serviceStatuses, statuses);
     } else {
-      serviceStatuses.NETEASE_API = false;
       serviceStatuses.JAVA_SERVER = false;
     }
   }, 2000);
@@ -70,9 +65,6 @@ onMounted(async () => {
 
     if (msg.includes("Started MusicPartyApplication")) {
       isJavaReady.value = true;
-    }
-    if (msg.includes("server started") || msg.includes("NETEASE_API") && msg.includes("exited") === false) {
-      isApiReady.value = true;
     }
 
     if (logs.value.length > 1000) logs.value.shift();
@@ -93,12 +85,10 @@ const toggleServices = async () => {
     await StopServices();
     isRunning.value = false;
     isJavaReady.value = false;
-    isApiReady.value = false;
   } else {
     await SaveConfig(JSON.parse(JSON.stringify(config)));
     isRunning.value = true;
     isJavaReady.value = false;
-    isApiReady.value = false;
     logs.value = [];
     await StartServices();
   }
@@ -192,34 +182,24 @@ const openWeb = () => {
           <div v-if="activeTab === 'api'" class="space-y-4">
             <div class="bg-white p-4 border border-medical-200 shadow-sm space-y-4">
               <div class="flex items-center justify-between border-b border-medical-100 pb-2 mb-2">
-                <h3 class="text-[10px] font-black uppercase">网易云音乐 (Netease)</h3>
-                <input type="checkbox" v-model="config.neteaseEnabled" class="w-4 h-4 accent-medical-900" />
+                <h3 class="text-[10px] font-black uppercase">自建音源 (MP)</h3>
+                <input type="checkbox" v-model="config.mpEnabled" class="w-4 h-4 accent-medical-900" />
               </div>
-              <div class="space-y-4" :class="!config.neteaseEnabled ? 'opacity-40 grayscale pointer-events-none' : ''">
+              <div class="space-y-4" :class="!config.mpEnabled ? 'opacity-40 grayscale pointer-events-none' : ''">
                 <div class="space-y-1">
-                  <label class="text-[10px] font-bold text-medical-500 uppercase">账号 Cookie</label>
-                  <textarea v-model="config.neteaseCookie" placeholder="用于获取高清音质和私人歌单" rows="3" class="w-full bg-medical-50 border border-medical-200 px-2 py-1.5 text-[10px] font-mono outline-none focus:border-medical-900 resize-none"></textarea>
+                  <label class="text-[10px] font-bold text-medical-500 uppercase">MP API 地址</label>
+                  <p class="text-[9px] text-medical-400">后端访问 MP 服务的地址，如 http://127.0.0.1:8321</p>
+                  <input v-model="config.mpApiUrl" class="w-full bg-medical-50 border border-medical-200 px-2 py-1.5 text-[10px] font-mono outline-none focus:border-medical-900" />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-[10px] font-bold text-medical-500 uppercase">解析音质上限</label>
-                  <select v-model="config.neteaseQuality" class="w-full bg-medical-50 border border-medical-200 px-2 py-1.5 text-sm outline-none focus:border-medical-900">
-                    <option value="standard">标准</option>
-                    <option value="higher">较高</option>
-                    <option value="exhigh">极高</option>
-                    <option value="lossless">无损</option>
-                    <option value="hires">高解析度</option>
-                  </select>
+                  <label class="text-[10px] font-bold text-medical-500 uppercase">MP 公网地址</label>
+                  <p class="text-[9px] text-medical-400">浏览器直接取音频的地址，如 https://home.netr0.com/music（留空则用 API 地址）</p>
+                  <input v-model="config.mpPublicUrl" class="w-full bg-medical-50 border border-medical-200 px-2 py-1.5 text-[10px] font-mono outline-none focus:border-medical-900" />
                 </div>
-              </div>
-            </div>
-            <div class="bg-white p-4 border border-medical-200 shadow-sm space-y-4">
-              <div class="flex items-center justify-between border-b border-medical-100 pb-2 mb-2">
-                <h3 class="text-[10px] font-black uppercase">Bilibili</h3>
-                <input type="checkbox" v-model="config.bilibiliEnabled" class="w-4 h-4 accent-medical-900" />
-              </div>
-              <div class="space-y-1" :class="!config.bilibiliEnabled ? 'opacity-40 grayscale pointer-events-none' : ''">
-                <label class="text-[10px] font-bold text-medical-500 uppercase">Cookie</label>
-                <input v-model="config.biliCookie" placeholder="浏览器完整Cookie串(含SESSDATA)" class="w-full bg-medical-50 border border-medical-200 px-2 py-1.5 text-[10px] font-mono outline-none focus:border-medical-900" />
+                <div class="space-y-1">
+                  <label class="text-[10px] font-bold text-medical-500 uppercase">访问令牌</label>
+                  <input v-model="config.mpToken" placeholder="需与 MP 服务端的 MP_API_TOKEN 一致" class="w-full bg-medical-50 border border-medical-200 px-2 py-1.5 text-[10px] font-mono outline-none focus:border-medical-900" />
+                </div>
               </div>
             </div>
           </div>
@@ -267,11 +247,7 @@ const openWeb = () => {
             </div>
 
             <div class="bg-white p-4 border border-medical-200 shadow-sm space-y-3">
-              <h3 class="text-[10px] font-black border-b border-medical-100 pb-1 mb-2">存储与安全</h3>
-              <div class="space-y-1">
-                <label class="text-[9px] font-bold text-medical-400 uppercase">音乐缓存上限</label>
-                <input v-model="config.cacheMaxSize" class="w-full bg-medical-50 border border-medical-200 px-2 py-1 text-xs outline-none" />
-              </div>
+              <h3 class="text-[10px] font-black border-b border-medical-100 pb-1 mb-2">安全</h3>
               <div class="flex items-center gap-2 pt-2">
                 <input type="checkbox" v-model="config.authRateLimitEnabled" id="rateLimit" class="w-4 h-4 accent-medical-900" />
                 <label for="rateLimit" class="text-[10px] font-bold text-medical-600">启用进入尝试频率限制</label>
@@ -299,10 +275,6 @@ const openWeb = () => {
           </div>
           <div class="flex gap-4">
              <div class="flex items-center gap-1.5">
-               <span class="w-1.5 h-1.5 rounded-full" :class="serviceStatuses.NETEASE_API ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-white/20'"></span>
-               <span class="text-[9px] font-mono text-white/60">网易云 API</span>
-             </div>
-             <div class="flex items-center gap-1.5">
                <span class="w-1.5 h-1.5 rounded-full" :class="serviceStatuses.JAVA_SERVER ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-white/20'"></span>
                <span class="text-[9px] font-mono text-white/60">后端服务</span>
              </div>
@@ -325,12 +297,6 @@ const openWeb = () => {
     <!-- 状态栏 -->
     <div class="flex justify-between items-center px-4 py-2 bg-white border border-medical-200 text-[10px] font-mono shadow-sm">
       <div class="flex gap-6">
-        <div class="flex items-center gap-2">
-          <span class="text-medical-400">网易云服务:</span>
-          <span :class="serviceStatuses.NETEASE_API ? 'text-green-600 font-bold' : 'text-medical-300'">
-            {{ serviceStatuses.NETEASE_API ? (isApiReady ? '已运行' : '启动中') : '已停止' }}
-          </span>
-        </div>
         <div class="flex items-center gap-2">
           <span class="text-medical-400">后端主服务:</span>
           <span :class="serviceStatuses.JAVA_SERVER ? 'text-green-600 font-bold' : 'text-medical-300'">

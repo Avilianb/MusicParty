@@ -7,13 +7,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.thornex.musicparty.config.AppProperties;
-import org.thornex.musicparty.config.LocalResourceConfig;
 import org.thornex.musicparty.dto.PlayableMusic;
-import org.thornex.musicparty.enums.CacheStatus;
 import org.thornex.musicparty.event.PlayerStateEvent;
 import org.thornex.musicparty.event.StreamStatusEvent;
-import org.thornex.musicparty.service.LocalCacheService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -64,7 +62,6 @@ public class LiveStreamService {
     /** 看门狗：转码器运行中超过该时长无任何输出 → 判定停滞（网络源卡住），重启 */
     private static final long TRANSCODER_STALL_TIMEOUT_MS = 10000;
 
-    private final LocalCacheService localCacheService;
     private final ApplicationEventPublisher eventPublisher;
     private final AppProperties appProperties;
 
@@ -106,8 +103,7 @@ public class LiveStreamService {
     private volatile long lastSeekRestartTimeMs;
     private volatile long lastCrashRestartTimeMs;
 
-    public LiveStreamService(LocalCacheService localCacheService, ApplicationEventPublisher eventPublisher, AppProperties appProperties) {
-        this.localCacheService = localCacheService;
+    public LiveStreamService(ApplicationEventPublisher eventPublisher, AppProperties appProperties) {
         this.eventPublisher = eventPublisher;
         this.appProperties = appProperties;
     }
@@ -601,49 +597,32 @@ public class LiveStreamService {
     }
 
     /**
-     * 解析当前歌曲的转码源。优先本地缓存文件，否则使用网络 URL。
+     * 解析当前歌曲的转码源。
      *
-     * @return 转码目标；源未就绪（PENDING_DOWNLOAD / 空 URL）时返回 null
+     * <p>自建音源（MP）的音频由服务端按 mid 落盘缓存，浏览器拿到的 URL 是公网地址；
+     * 转码器在服务器侧拉流，改写成内网地址可少走一圈 nginx（回环 NAT 不可靠时尤其重要）。</p>
+     *
+     * @return 转码目标；URL 尚未就绪时返回 null
      */
     private TranscodeTarget resolveTarget() {
-        LocalCacheService.CacheEntry entry = localCacheService.getCacheEntry(currentMusic.id());
-        if (entry != null && entry.getStatus() == CacheStatus.COMPLETED) {
-            Path filePath = Paths.get(LocalResourceConfig.CACHE_DIR, entry.getFileName());
-            if (Files.exists(filePath)) {
-                return new TranscodeTarget(
-                        filePath.toAbsolutePath().toString(),
-                        Map.of(),
-                        "file:" + entry.getFileName() + "#" + currentMusic.id());
-            }
-        }
-
         String url = currentMusic.url();
-        if (url == null || url.isEmpty() || "PENDING_DOWNLOAD".equals(url)) {
+        if (url == null || url.isEmpty()) {
             log.warn("Stream: music source not ready for {}", currentMusic.name());
             return null;
         }
 
-        Map<String, String> headers = new HashMap<>();
-        if ("netease".equals(currentMusic.platform())) {
-            // 根因：NeteaseMusicApiService.upgradeToHttps 会把 CDN 直链强制转成 https（供浏览器在
-            // https 页面上直连，避免混合内容拦截）。但实测（2026-08-02，服务器 ffmpeg 8.0.1）网易云
-            // CDN 从服务器走 HTTPS 的 TLS 极不稳定：随机 [tls] Unknown error / 握手挂起 → 转码器
-            // 零产出 → 看门狗反复重启 → 切歌卡顿。转码器是服务器侧拉流，改走 http 输入稳定可用；
-            // 浏览器侧仍用 https 的 currentMusic.url()，不受影响。
-            if (url.startsWith("https://")) {
-                url = "http://" + url.substring("https://".length());
+        String publicBase = appProperties.getMp().getPublicBaseUrl();
+        String internalBase = appProperties.getMp().getBaseUrl();
+        if (StringUtils.hasText(publicBase) && StringUtils.hasText(internalBase)) {
+            String normalizedPublic = publicBase.endsWith("/") ? publicBase.substring(0, publicBase.length() - 1) : publicBase;
+            String normalizedInternal = internalBase.endsWith("/") ? internalBase.substring(0, internalBase.length() - 1) : internalBase;
+            if (url.startsWith(normalizedPublic)) {
+                url = normalizedInternal + url.substring(normalizedPublic.length());
             }
-            // 网易云 CDN 对非浏览器请求（ffmpeg 默认 UA、无 Referer）有限流/丢弃行为，
-            // 实测会导致 ffmpeg TLS 连接被切断（IO error: End of file）→ 转码器无输出 → 断断续续。
-            // 带上浏览器 UA + Referer 后请求特征接近真实浏览器，显著降低被切断概率。
-            headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-            headers.put("Referer", "https://music.163.com/");
-        } else if ("bilibili".equals(currentMusic.platform())) {
-            headers.put("Referer", "https://www.bilibili.com/");
-            headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         }
+
         // key 必须含 music id：两首歌可能共用同一 URL
-        return new TranscodeTarget(url, headers, "net:" + currentMusic.platform() + ":" + url + "#" + currentMusic.id());
+        return new TranscodeTarget(url, Map.of(), "net:" + currentMusic.platform() + ":" + url + "#" + currentMusic.id());
     }
 
     private record TranscodeTarget(String input, Map<String, String> headers, String key) {

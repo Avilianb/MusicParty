@@ -7,6 +7,7 @@ import org.thornex.musicparty.dto.Playlist;
 import org.thornex.musicparty.dto.UserSearchResult;
 import org.thornex.musicparty.exception.ApiRequestException;
 import org.thornex.musicparty.service.api.IMusicApiService;
+import org.thornex.musicparty.service.api.MpMusicApiService;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -35,11 +36,8 @@ public class ApiController {
     }
 
     private IMusicApiService getService(String platform) {
-        if ("netease".equalsIgnoreCase(platform) && !appProperties.getNetease().isEnabled()) {
-            throw new ApiRequestException("网易云音乐源已被禁用");
-        }
-        if ("bilibili".equalsIgnoreCase(platform) && !appProperties.getBilibili().isEnabled()) {
-            throw new ApiRequestException("Bilibili 源已被禁用");
+        if (MpMusicApiService.PLATFORM.equalsIgnoreCase(platform) && !appProperties.getMp().isEnabled()) {
+            throw new ApiRequestException("自建音源已被禁用");
         }
 
         IMusicApiService service = apiServiceMap.get(platform);

@@ -1,11 +1,12 @@
 import { ref } from 'vue';
 import { useToast } from './useToast';
 import { musicApi } from '../api/music.js';
+import { MP_PLATFORM } from '../constants/api.js';
 
 export function useSearchLogic(emit) {
     const { error } = useToast();
 
-    const platform = ref('netease');
+    const platform = ref(MP_PLATFORM);
     const keyword = ref('');
     const songs = ref([]);
     const loading = ref(false);

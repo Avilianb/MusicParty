@@ -32,20 +32,9 @@ public record PlayerState(
             int maxChatHistorySize,
             long minChatIntervalMs,
             int maxChatMessageLength,
-            boolean neteaseEnabled,
-            boolean bilibiliEnabled,
-            int bilibiliMaxDurationMinutes,
+            boolean mpEnabled,
             boolean voteSkipEnabled,
             double voteSkipThreshold,
-            int voteSkipWaitTime,
-            boolean neteaseCookieConfigured,
-            PrivateDjConfigSummary privateDj
-    ) {
-        public record PrivateDjConfigSummary(
-                String mode,
-                boolean fillBlankEnabled,
-                boolean joinQueueEnabled,
-                boolean custodyEnabled
-        ) {}
-    }
+            int voteSkipWaitTime
+    ) {}
 }

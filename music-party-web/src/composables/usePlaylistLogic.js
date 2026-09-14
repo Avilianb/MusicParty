@@ -22,7 +22,8 @@ export function usePlaylistLogic(platformRef, songsRef, listModeRef, loadingRef)
     const offset = ref(0);
     const hasMore = ref(true);
     const isLoadingMore = ref(false);
-    const limit = computed(() => platformRef.value === 'bilibili' ? 20 : 50);
+    // 分页大小固定：唯一音源下不再按平台区分
+    const PAGE_SIZE = 50;
 
     const bindings = computed(() => userStore.bindings);
 
@@ -84,24 +85,13 @@ export function usePlaylistLogic(platformRef, songsRef, listModeRef, loadingRef)
                 platformRef.value,
                 currentPlaylistId.value,
                 offset.value,
-                limit.value
+                PAGE_SIZE
             );
 
-            // B站特殊的分页判定
-            if (platformRef.value === 'bilibili') {
-                if (rawSongs.length === 0) hasMore.value = false;
-            } else {
-                if (rawSongs.length < limit.value) hasMore.value = false;
-            }
+            // 单音源统一规则：返回不足一页即视为已到末尾
+            if (rawSongs.length < PAGE_SIZE) hasMore.value = false;
 
-            const validSongs = rawSongs.filter(s => s.id !== 'INVALID_SKIP');
-            songsRef.value.push(...validSongs);
-
-            // 贪婪加载：如果有效数据太少，自动加载下一页
-            if (hasMore.value && rawSongs.length > 0 && validSongs.length < 10) {
-                offset.value += limit.value;
-                setTimeout(fetchSongsPage, 50);
-            }
+            songsRef.value.push(...rawSongs);
 
             // 兜底
             if (rawSongs.length === 0) isLoadingMore.value = false;
@@ -136,7 +126,7 @@ export function usePlaylistLogic(platformRef, songsRef, listModeRef, loadingRef)
 
         if (bottom < 100 && hasMore.value && !isLoadingMore.value && !loadingRef.value) {
             isLoadingMore.value = true;
-            offset.value += limit.value;
+            offset.value += PAGE_SIZE;
             try {
                 await fetchSongsPage();
             } finally {

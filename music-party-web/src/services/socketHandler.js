@@ -4,7 +4,7 @@ import { useChatStore } from '../stores/chat';
 import { useToast } from '../composables/useToast';
 import { useAdminStore } from '../stores/admin';
 import { adminApi } from '../api/admin';
-import { WS_DEST } from '../constants/api';
+import { WS_DEST, MP_PLATFORM } from '../constants/api';
 import { socketService } from './socket';
 
 /**
@@ -138,10 +138,10 @@ export const createSocketCallbacks = () => {
             setTimeout(() => {
                 socketService.send(WS_DEST.RESYNC);
             }, 300);
-            // 恢复绑定
-            Object.entries(userStore.bindings).forEach(([platform, id]) => {
-                if (id) playerStore.bindAccount(platform, id);
-            });
+            // 恢复绑定（单一音源：历史遗留的其它平台绑定不再重放）
+            Object.entries(userStore.bindings)
+                .filter(([platform, id]) => platform === MP_PLATFORM && id)
+                .forEach(([platform, id]) => playerStore.bindAccount(platform, id));
         },
 
         // 连接断开 (含异常断开)

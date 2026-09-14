@@ -1,6 +1,20 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { STORAGE_KEYS } from '../constants/keys';
+import { MP_PLATFORM } from '../constants/api';
+
+// 单一音源迁移：本地只保留 qq 绑定，并回写迁移结果
+const loadBindings = () => {
+    let parsed = {};
+    try {
+        parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.BINDINGS) || '{}') || {};
+    } catch {
+        parsed = {};
+    }
+    const migrated = parsed[MP_PLATFORM] ? { [MP_PLATFORM]: parsed[MP_PLATFORM] } : {};
+    localStorage.setItem(STORAGE_KEYS.BINDINGS, JSON.stringify(migrated));
+    return migrated;
+};
 
 const generateToken = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -34,7 +48,7 @@ export const useUserStore = defineStore('user', () => {
         sessionId: ''
     });
 
-    const bindings = ref(JSON.parse(localStorage.getItem(STORAGE_KEYS.BINDINGS) || '{}'));
+    const bindings = ref(loadBindings());
     // 全局状态：控制改名弹窗显示
     const showNameModal = ref(false);
 

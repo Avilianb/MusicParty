@@ -7,8 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.music-api")
 @Data
 public class AppProperties {
-    private NeteaseApiConfig  netease  = new NeteaseApiConfig();
-    private BilibiliApiConfig bilibili = new BilibiliApiConfig();
+    private MpApiConfig mp = new MpApiConfig();
     private String adminPassword;
     private String baseUrl;
     private String authorName = "ThorNex";
@@ -19,19 +18,8 @@ public class AppProperties {
     private QueueConfig queue = new QueueConfig();
     private PlayerConfig player = new PlayerConfig();
     private ChatConfig chat = new ChatConfig();
-    private CacheConfig cache = new CacheConfig();
     private AuthConfig auth = new AuthConfig();
     private StreamConfig stream = new StreamConfig();
-    private PrivateDjConfig privateDj = new PrivateDjConfig();
-
-    /** 私人电台/私人DJ 模块配置（仅运行时生效） */
-    @Data
-    public static class PrivateDjConfig {
-        private String mode = "OFF";              // 三态开关：OFF=关闭 / FM=私人FM / DJ=私人DJ（选模式即开关，无需总开关）
-        private boolean fillBlankEnabled = false; // 填充空白
-        private boolean joinQueueEnabled = false; // 加入队列
-        private boolean custodyEnabled = false;   // 播放托管
-    }
 
     @Data
     public static class QueueConfig {
@@ -56,11 +44,6 @@ public class AppProperties {
         private int maxHistorySize = 1000;
         private long minIntervalMs = 1000;
         private int maxMessageLength = 200;
-    }
-
-    @Data
-    public static class CacheConfig {
-        private org.springframework.util.unit.DataSize maxSize = org.springframework.util.unit.DataSize.ofGigabytes(1);
     }
 
     @Data
@@ -93,26 +76,18 @@ public class AppProperties {
         private long emitterTimeoutMs = 24 * 60 * 60 * 1000L;
     }
 
+    /**
+     * 自建音源（MP = 自己服务器上的 QQ 音乐 API）配置。
+     * baseUrl 供后端调用（元数据/预热/歌词），publicBaseUrl 用于拼给浏览器播放的绝对音频地址；
+     * publicBaseUrl 为空时回退 baseUrl。
+     */
     @EqualsAndHashCode(callSuper = true)
     @Data
-    public static class BilibiliApiConfig extends ApiConfig {
-        /**
-         * 完整 Cookie（可选，与网易云 Cookie 一致）：浏览器登录 B站后复制完整 Cookie 请求头。
-         * 不填仅导致 B站源不可用，不影响其他音乐源。
-         * 须含 buvid3/buvid4/SESSDATA/bili_jct/_uuid 等，请求才接近真实登录浏览器，
-         * 才能解析高音质 DASH 音频并降低风控概率。
-         */
-        private String cookie;
+    public static class MpApiConfig extends ApiConfig {
+        private String publicBaseUrl;
+        private String token;
         private boolean enabled = true;
-        /** B站视频时长上限（分钟），超过则前端标记为不可播放 */
-        private int maxDurationMinutes = 10;
-    }
-
-    @EqualsAndHashCode(callSuper = true)
-    @Data
-    public static class NeteaseApiConfig extends ApiConfig {
-        private String cookie;
-        private String quality = "exhigh"; // 默认音质：极高 (exhigh)
-        private boolean enabled = true;
+        /** 单次后端调用超时（秒） */
+        private int timeoutSeconds = 10;
     }
 }

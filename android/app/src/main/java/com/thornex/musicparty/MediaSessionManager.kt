@@ -120,7 +120,6 @@ object MediaSessionManager {
                 conn.connectTimeout = 5000
                 conn.readTimeout = 5000
                 conn.setRequestProperty("User-Agent", "Mozilla/5.0")
-                conn.setRequestProperty("Referer", "https://music.163.com/")
                 stream = conn.inputStream
                 val bmp = BitmapFactory.decodeStream(stream)
                 if (bmp != null) {

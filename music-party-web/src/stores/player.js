@@ -49,18 +49,10 @@ export const usePlayerStore = defineStore('player', () => {
         maxChatHistorySize: 1000,
         minChatIntervalMs: 1000,
         maxChatMessageLength: 200,
-        neteaseEnabled: true,
-        bilibiliEnabled: true,
+        mpEnabled: true,
         voteSkipEnabled: false,
         voteSkipThreshold: 0.5,
-        voteSkipWaitTime: 15,
-        neteaseCookieConfigured: false,
-        privateDj: {
-            mode: 'OFF',
-            fillBlankEnabled: false,
-            joinQueueEnabled: false,
-            custodyEnabled: false
-        }
+        voteSkipWaitTime: 15
     });
 
     const userStore = useUserStore();

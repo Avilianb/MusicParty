@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// 应用可能被部署在子路径下（例如 https://home.netr0.com/party/），
+// 以「文档根目录」作为 API 根：绝对路径 '/api/xxx' 会被拼到该根之后，
+// 于是根部署得到 '/api/xxx'，子路径部署得到 '/party/api/xxx'。
+const appBase = new URL('.', document.baseURI).pathname;
+
 const client = axios.create({
-    // 可以在这里配置 baseURL 或 timeout
+    baseURL: appBase,
     timeout: 10000
 });
 

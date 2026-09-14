@@ -1,16 +1,5 @@
 services:
-  # 1. 网易云音乐 API 服务
-  netease-api:
-    image: moefurina/ncm-api:latest
-    container_name: music-party-netease
-    restart: always
-    environment:
-      - PORT=3000
-      - HTTPS=true
-    networks:
-      - music-net
-
-  # 2. Music Party 主应用
+  # Music Party 主应用
   music-party:
     image: thornex/music-party:latest
     container_name: music-party-app
@@ -21,27 +10,23 @@ services:
       # 管理员密码，用于在搜索框输入指令控制系统
       - ADMIN_PASSWORD=admin123
       
-      # 网易云 API 地址，指向上面的容器名
-      - NETEASE_API_URL=http://netease-api:3000
+      # [自建音源 MP]
+      # MP 服务不在本 compose 中，需单独部署（默认监听 127.0.0.1:8321）
+      - MP_API_URL=http://127.0.0.1:8321               # 后端访问 MP 的地址；容器非 host 网络时改成宿主机地址，如 http://host.docker.internal:8321
+      - MP_PUBLIC_URL=https://home.netr0.com/music     # 浏览器直接取音频的公网地址；留空则回退用 MP_API_URL
+      - MP_API_TOKEN=                                  # MP 访问令牌，须与 MP 服务端一致
+      - MP_ENABLED=true                                # 是否启用自建音源
       
       # [基础配置]
       - BASE_URL=http://localhost:8848    #你的基础url，用于直播流链接的拼接
       - APP_AUTHOR_NAME=ThorNex      # 页面左上角显示的作者名
       - APP_BACK_WORDS=MUSIC PARTY    # 中间背景装饰文字
       
-      # [平台凭证]
-      - NETEASE_ENABLED=true         # 是否开启网易云音乐源
-      - BILIBILI_ENABLED=true        # 是否开启 Bilibili 源
-      - NETEASE_COOKIE=""            # 网易云 Cookie
-      - NETEASE_QUALITY=exhigh       # 网易云音质 (standard, higher, exhigh, lossless, hires)
-      - BILIBILI_COOKIE=""           # B站完整Cookie(可选，仅B站源需要)
-
       # [性能/策略配置]
       - QUEUE_MAX_SIZE=1000          # 播放队列最大长度
       - QUEUE_HISTORY_SIZE=50        # 历史记录保留数量
       - PLAYLIST_IMPORT_LIMIT=100    # 导入歌单时的最大歌曲数限制
       - CHAT_HISTORY_LIMIT=1000      # 聊天历史记录保留数量
-      - CACHE_MAX_SIZE=1GB           # 本地音乐缓存上限 (例如 512MB, 1GB, 2GB)
 
       # [防滥用配置]
       - QUEUE_MAX_USER_SONGS=100     # 单用户最大点歌数
@@ -52,13 +37,9 @@ services:
       - AUTH_WINDOW_SECONDS=60       # 密码尝试窗口 (秒)
       - AUTH_BLOCK_DURATION=300      # 密码封锁时间 (秒)
 
-    depends_on:
-      - netease-api
     networks:
       - music-net
     volumes:
-      # 挂载音频缓存目录，防止重启后 B 站歌曲重新下载
-      - ./music_party/cached_media:/app/cached_media
       # 挂载数据目录，用于持久化播放列表和历史记录
       - ./music_party/data:/app/data
 

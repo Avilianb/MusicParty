@@ -21,7 +21,9 @@ class SocketService {
         if (this.client && this.client.active) return;
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const brokerURL = `${protocol}//${window.location.host}/ws`;
+        // 与 axios 一致：子路径部署时 WS 端点也要带上该前缀（如 /party/ws）
+        const appBase = new URL('.', document.baseURI).pathname;
+        const brokerURL = `${protocol}//${window.location.host}${appBase}ws`;
 
         this.client = new Client({
             brokerURL,

@@ -8,8 +8,6 @@ public record PlayableMusic(
         List<String> artists,
         long duration,
         String platform,
-        String url, // The actual playable URL for the audio
-        String coverUrl,
-        boolean needsProxy
+        String url, // 可播放的音频直链（自建音源：<publicBaseUrl>/mp/audio/{mid}?token=...）
+        String coverUrl
 ) {}
-

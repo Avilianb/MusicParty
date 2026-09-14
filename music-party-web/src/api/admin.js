@@ -32,11 +32,6 @@ export const adminApi = {
         headers: { 'X-Admin-Password': adminPwd }
     }),
 
-    // 更新平台 Cookie
-    setCookie: (adminPwd, platform, value) => client.post('/api/admin/config/cookie', { platform, value }, {
-        headers: { 'X-Admin-Password': adminPwd }
-    }),
-
     // 直播流控制
     setStream: (adminPwd, enabled) => client.post('/api/admin/room/stream', { enabled }, {
         headers: { 'X-Admin-Password': adminPwd }
@@ -44,11 +39,6 @@ export const adminApi = {
 
     // 更新系统配置
     updateConfig: (adminPwd, config) => client.post('/api/admin/config/update', config, {
-        headers: { 'X-Admin-Password': adminPwd }
-    }),
-
-    // 更新私人电台/私人DJ 配置
-    updatePrivateDj: (adminPwd, update) => client.post('/api/admin/private-dj', update, {
         headers: { 'X-Admin-Password': adminPwd }
     })
 };

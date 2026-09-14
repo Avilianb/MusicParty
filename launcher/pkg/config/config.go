@@ -17,14 +17,11 @@ type AppConfig struct {
 	AuthorName    string `json:"authorName"`
 	BackWords     string `json:"backWords"`
 
-	// Netease
-	NeteaseCookie string `json:"neteaseCookie"`
-	NeteaseQuality string `json:"neteaseQuality"`
-	NeteaseEnabled bool `json:"neteaseEnabled"`
-
-	// Bilibili
-	BiliCookie string `json:"biliCookie"`
-	BilibiliEnabled bool `json:"bilibiliEnabled"`
+	// MP (self-hosted music source)
+	MpApiUrl    string `json:"mpApiUrl"`
+	MpPublicUrl string `json:"mpPublicUrl"`
+	MpToken     string `json:"mpToken"`
+	MpEnabled   bool   `json:"mpEnabled"`
 
 	// Queue Settings
 	QueueMaxSize      int `json:"queueMaxSize"`
@@ -38,9 +35,6 @@ type AppConfig struct {
 	ChatMaxHistorySize int `json:"chatMaxHistorySize"`
 	ChatMinIntervalMs  int `json:"chatMinIntervalMs"`
 	ChatMaxMessageLength int `json:"chatMaxMessageLength"`
-
-	// Cache Settings
-	CacheMaxSize string `json:"cacheMaxSize"`
 
 	// Auth Settings
 	AuthRateLimitEnabled bool `json:"authRateLimitEnabled"`
@@ -76,9 +70,9 @@ func LoadConfig() *AppConfig {
 			AdminPassword: "",
 			AuthorName:    "ThorNex",
 			BackWords:     "THORNEX",
-			NeteaseQuality: "exhigh",
-			NeteaseEnabled: true,
-			BilibiliEnabled: true,
+			MpApiUrl:              "http://127.0.0.1:8321",
+			MpPublicUrl:           "",
+			MpEnabled:             true,
 			QueueMaxSize:      1000,
 			QueueHistorySize:  50,
 			QueueMaxUserSongs: 100,
@@ -86,7 +80,6 @@ func LoadConfig() *AppConfig {
 			ChatMaxHistorySize: 1000,
 			ChatMinIntervalMs:  1000,
 			ChatMaxMessageLength: 200,
-			CacheMaxSize: "1GB",
 			AuthRateLimitEnabled: true,
 			AuthMaxAttempts:      5,
 			AuthWindowSeconds:    60,

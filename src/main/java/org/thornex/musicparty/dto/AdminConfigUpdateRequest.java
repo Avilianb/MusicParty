@@ -8,9 +8,7 @@ public record AdminConfigUpdateRequest(
     Integer maxChatHistorySize,
     Long minChatIntervalMs,
     Integer maxChatMessageLength,
-    Boolean neteaseEnabled,
-    Boolean bilibiliEnabled,
-    Integer bilibiliMaxDurationMinutes,
+    Boolean mpEnabled,
     Boolean voteSkipEnabled,
     Double voteSkipThreshold,
     Integer voteSkipWaitTime

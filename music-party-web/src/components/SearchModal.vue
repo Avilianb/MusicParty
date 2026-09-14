@@ -14,19 +14,14 @@
           <Search class="w-5 h-5 text-accent"/> SEARCH
         </h2>
 
-        <!-- 平台切换 TAB (移动端收紧内边距，防小屏换行)；全长方形，选中用主题色高亮 -->
+        <!-- 音源标签（单一自建音源）+ 本地点赞列表标签（仅本地缓存，不上报服务器） -->
         <div class="flex gap-1 mb-3 md:mb-4 flex-wrap">
           <button
-              v-for="p in ['netease', 'bilibili']" :key="p"
-              @click="selectPlatform(p)"
-              :disabled="!isPlatformEnabled(p)"
+              @click="mode = 'search'"
               class="px-4 md:px-6 py-2 text-sm font-bold uppercase transition-all"
-              :class="[
-                mode === 'search' && platform === p ? 'bg-accent text-white' : 'bg-medical-200 text-medical-500 hover:bg-medical-300',
-                !isPlatformEnabled(p) ? 'opacity-30 cursor-not-allowed grayscale' : ''
-              ]"
+              :class="mode === 'search' ? 'bg-accent text-white' : 'bg-medical-200 text-medical-500 hover:bg-medical-300'"
           >
-            {{ p }}
+            {{ MP_PLATFORM }}
           </button>
           <!-- 本地点赞列表标签（仅本地缓存，不上报服务器） -->
           <button
@@ -179,7 +174,7 @@
             <!-- 歌曲列表渲染 -->
             <div class="space-y-1">
               <div v-if="songs.length === 0 && !loading" class="text-center py-10 text-medical-400 text-xs font-mono">NO DATA FOUND</div>
-              <div v-for="song in songs" :key="song.id" class="flex items-center p-3 border border-transparent transition-all group" :class="isUnplayable(song) ? 'opacity-50 grayscale bg-medical-50 cursor-not-allowed' : 'bg-white hover:border-medical-300 hover:shadow-sm'">
+              <div v-for="song in songs" :key="song.id" class="flex items-center p-3 border border-transparent transition-all group bg-white hover:border-medical-300 hover:shadow-sm">
                 <div class="flex-1 w-0 flex items-center gap-3">
                   <div class="w-8 h-8 bg-medical-200 flex-shrink-0 relative overflow-hidden"><CoverImage :src="song.coverUrl" class="w-full h-full" :scanline="false" /></div>
                   <div class="min-w-0 flex-1">
@@ -187,10 +182,8 @@
                     <div class="text-xs text-medical-500 truncate">{{ song.artists.join(' / ') }}</div>
                   </div>
                 </div>
-                <div v-if="isUnplayable(song)" class="ml-2 flex-shrink-0"><span class="px-1.5 py-0.5 text-[10px] font-mono font-bold text-medical-400 border border-medical-300 bg-medical-100 rounded-sm">>{{ (playerStore.config.bilibiliMaxDurationMinutes || 10) }}MIN</span></div>
 
                 <button
-                    v-else
                     @click="handleAddClick(song)"
                     class="ml-2 p-2 flex-shrink-0 transition-all duration-300"
                     :class="[
@@ -232,16 +225,11 @@ import { usePlaylistLogic } from '../composables/usePlaylistLogic';
 import { useLikedSongs } from '../composables/useLikedSongs';
 import { X, Search, PlusCircle, ListPlus, Loader2, ArrowLeft, ChevronRight, Check, ExternalLink } from 'lucide-vue-next';
 import CoverImage from './CoverImage.vue';
+import { MP_PLATFORM, mpSongUrl } from '../constants/api';
 
 const props = defineProps(['isOpen']);
 const emit = defineEmits(['close']);
 const playerStore = usePlayerStore();
-
-const isPlatformEnabled = (p) => {
-  if (p === 'netease') return playerStore.config?.neteaseEnabled !== false;
-  if (p === 'bilibili') return playerStore.config?.bilibiliEnabled !== false;
-  return true;
-};
 
 // 1. 引入搜索逻辑
 const {
@@ -270,19 +258,6 @@ const filteredLikedSongs = computed(() => {
   );
 });
 
-const selectPlatform = async (p) => {
-  // 已在当前搜索平台则无需重复搜索
-  if (mode.value === 'search' && platform.value === p) return;
-  platform.value = p;
-  mode.value = 'search';
-  // 切换平台：有关键词则用新平台重新搜索，否则清空上一平台的残留结果
-  if (keyword.value.trim()) {
-    await doSearch();
-  } else {
-    songs.value = [];
-  }
-};
-
 // 2. 引入歌单逻辑 (注入依赖)
 const {
   playlists, currentPlaylistId, searchUserKeyword, userSearchResults,
@@ -293,12 +268,6 @@ const {
 // 3. UI 状态
 const mobileView = ref('playlists');
 // 4. 交互胶水代码
-const isUnplayable = (song) => {
-  // B站视频时长上限（分钟）由管理面板配置，默认 10
-  const maxMin = playerStore.config.bilibiliMaxDurationMinutes || 10;
-  return platform.value === 'bilibili' && song.duration > maxMin * 60 * 1000;
-};
-
 const handleSelectPlaylist = (pid) => {
   loadPlaylist(pid);
   mobileView.value = 'songs';
@@ -348,10 +317,7 @@ const addLikedClick = (song) => {
 
 // LikeSong 列表：跳转源页面（与播放控制器专辑封面逻辑一致）
 const openLikedSource = (song) => {
-  const url = song.platform === 'netease'
-    ? `https://music.163.com/#/song?id=${song.id}`
-    : `https://www.bilibili.com/video/${song.id}`;
-  if (url) window.open(url, '_blank');
+  window.open(mpSongUrl(song.id), '_blank');
 };
 
 // 监听搜索动作 -> 自动切视图

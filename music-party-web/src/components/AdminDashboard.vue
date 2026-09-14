@@ -131,46 +131,6 @@
                 </div>
               </div>
 
-              <!-- Section: Private Radio -->
-              <div class="bg-white border border-medical-200 shadow-sm overflow-hidden chamfer-br">
-                <div class="p-3 bg-medical-700 text-white flex items-center gap-2">
-                  <Radio class="w-4 h-4" />
-                  <span class="text-xs font-bold uppercase tracking-widest font-mono">私人电台 / Private_Radio</span>
-                </div>
-                <div class="p-4 space-y-4">
-                  <!-- 模式开关（两个开关都是"点选开启、再点关闭"；全关即整体关闭，无需独立"关闭"按钮） -->
-                  <div class="space-y-1">
-                    <span class="text-[9px] font-bold text-medical-400 font-mono uppercase">模式 · 开关</span>
-                    <div class="grid grid-cols-2 gap-1 p-1 bg-medical-50 border border-medical-100">
-                      <button @click="setPrivateDjMode(privateDj.mode === 'FM' ? 'OFF' : 'FM')"
-                              class="py-1.5 text-[10px] font-bold transition-colors"
-                              :class="privateDj.mode === 'FM' ? 'bg-accent text-white' : 'text-medical-500 hover:bg-medical-200'">私人FM</button>
-                      <button @click="setPrivateDjMode(privateDj.mode === 'DJ' ? 'OFF' : 'DJ')"
-                              class="py-1.5 text-[10px] font-bold transition-colors"
-                              :class="privateDj.mode === 'DJ' ? 'bg-accent text-white' : 'text-medical-500 hover:bg-medical-200'">私人DJ</button>
-                    </div>
-                    <p class="text-[8px] text-medical-400">点选即开启，再点已选中的模式即关闭；私人DJ模式=先播语音再播歌；加入队列功能固定为私人FM</p>
-                  </div>
-
-                  <!-- 三个功能开关 -->
-                  <div class="space-y-2">
-                    <div v-for="sw in privateDjSwitches" :key="sw.field" class="flex items-center justify-between p-2 bg-medical-50 border border-medical-100">
-                      <div class="flex flex-col">
-                        <span class="text-[10px] font-bold text-medical-800">{{ sw.label }}</span>
-                        <span class="text-[8px] text-medical-400 font-mono uppercase">{{ sw.hint }}</span>
-                      </div>
-                      <button @click="togglePrivateDjSwitch(sw.field)"
-                              class="w-8 h-4 rounded-full relative transition-colors disabled:opacity-40"
-                              :class="privateDj[sw.field] ? 'bg-accent' : 'bg-medical-300'"
-                              :disabled="privateDj.mode === 'OFF'">
-                        <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300"
-                             :style="{ transform: privateDj[sw.field] ? 'translateX(16px)' : 'translateX(0)' }"></div>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <!-- Section: System Parameters -->
               <div class="bg-white border border-medical-200 shadow-sm overflow-hidden chamfer-br">
                 <div class="p-3 bg-medical-700 text-white flex items-center gap-2">
@@ -230,33 +190,22 @@
                 </div>
               </div>
 
-              <!-- Section: Credentials -->
+              <!-- Section: Music Source -->
               <div class="bg-white border border-medical-200 shadow-sm overflow-hidden chamfer-br">
                 <div class="p-3 bg-medical-600 text-white flex items-center gap-2">
                   <Database class="w-4 h-4" />
-                  <span class="text-xs font-bold uppercase tracking-widest font-mono">平台凭据 / Credentials</span>
+                  <span class="text-xs font-bold uppercase tracking-widest font-mono">音源 / Music_Source</span>
                 </div>
-                <div class="p-4 space-y-4">
-                   <div v-for="plat in platforms" :key="plat.id" class="space-y-2 border-b border-medical-50 pb-3 last:border-0 last:pb-0">
-                    <div class="flex justify-between items-center">
-                      <span class="text-[10px] font-bold text-medical-600 font-mono">{{ plat.name }} // {{ plat.tokenName }}</span>
-                      <button 
-                        @click="togglePlatform(plat.id)"
-                        class="w-8 h-4 rounded-full relative transition-colors"
-                        :class="playerStore.config[`${plat.id}Enabled`] ? 'bg-accent' : 'bg-medical-300'"
-                      >
-                        <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300" :style="{ transform: playerStore.config[`${plat.id}Enabled`] ? 'translateX(16px)' : 'translateX(0)' }"></div>
-                      </button>
-                    </div>
-                    <div class="flex gap-2">
-                      <input 
-                        type="password"
-                        v-model="plat.value" 
-                        :placeholder="'输入新 ' + plat.tokenName + '...'" 
-                        class="flex-1 bg-medical-50 border border-medical-200 px-3 py-2 text-[10px] outline-none focus:border-accent font-mono"
-                      />
-                      <button @click="updateCookie(plat.id, plat.value)" class="bg-medical-900 text-white px-3 font-bold text-[10px] hover:bg-accent transition-colors">更新</button>
-                    </div>
+                <div class="p-4">
+                  <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-medical-600 font-mono">自建音源 // MP_ENABLED</span>
+                    <button
+                      @click="toggleSourceEnabled"
+                      class="w-8 h-4 rounded-full relative transition-colors"
+                      :class="playerStore.config.mpEnabled ? 'bg-accent' : 'bg-medical-300'"
+                    >
+                      <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300" :style="{ transform: playerStore.config.mpEnabled ? 'translateX(16px)' : 'translateX(0)' }"></div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -294,7 +243,7 @@ import { useToast } from '../composables/useToast';
 import {
   Settings, X, Pause, Play, SkipForward, ListOrdered, Repeat1, Shuffle,
   Lock, Unlock, ShieldAlert, Save, AlertTriangle,
-  PlayCircle, Database, Globe, Sliders, ShieldCheck, Radio
+  PlayCircle, Database, Globe, Sliders, ShieldCheck
 } from 'lucide-vue-next';
 
 const adminStore = useAdminStore();
@@ -312,8 +261,7 @@ const systemFields = {
   '用户点歌上限': { field: 'maxUserSongs' },
   '导入单次上限': { field: 'maxPlaylistImportSize' },
   '聊天记录容量': { field: 'maxChatHistorySize' },
-  '发言频率限制(ms)': { field: 'minChatIntervalMs' },
-  'B站时长上限(分钟)': { field: 'bilibiliMaxDurationMinutes' }
+  '发言频率限制(ms)': { field: 'minChatIntervalMs' }
 };
 
 watch(() => playerStore.config, (newVal) => {
@@ -343,47 +291,6 @@ const locks = computed(() => [
   { key: 'SKIP', cnLabel: '锁定切歌', value: playerStore.isSkipLocked },
   { key: 'SHUFFLE', cnLabel: '锁定模式', value: playerStore.isPlayModeLocked },
 ]);
-
-const platforms = ref([
-  { id: 'netease', name: '网易云音乐', tokenName: 'COOKIE', value: '' },
-  { id: 'bilibili', name: '哔哩哔哩', tokenName: 'COOKIE', value: '' }
-]);
-
-// 私人电台/私人DJ 状态（来自 config.privateDj，服务端广播；mode 即开关：OFF=关闭/FM=私人FM/DJ=私人DJ）
-const privateDj = computed(() => playerStore.config.privateDj || {
-  mode: 'OFF',
-  fillBlankEnabled: false, joinQueueEnabled: false, custodyEnabled: false
-});
-
-const privateDjSwitches = [
-  { field: 'fillBlankEnabled', label: '填充空白', hint: '队列无有效歌曲时播FM/DJ' },
-  { field: 'joinQueueEnabled', label: '加入队列', hint: '仅随机模式生效·固定私人FM' },
-  { field: 'custodyEnabled', label: '播放托管', hint: '无视队列·仅播FM/DJ' },
-];
-
-const setPrivateDjMode = async (mode) => {
-  // 切到 FM/DJ 视为开启，需已配置网易云 Cookie（后端同样校验，这里先给友好提示）
-  if (mode !== 'OFF' && !playerStore.config.neteaseCookieConfigured) {
-    error('需先配置网易云 Cookie');
-    return;
-  }
-  try {
-    const data = await adminApi.updatePrivateDj(adminStore.adminPassword, { mode });
-    success(data.message);
-  } catch (e) {
-    error('模式切换失败');
-  }
-};
-
-const togglePrivateDjSwitch = async (field) => {
-  const update = { [field]: !privateDj.value[field] };
-  try {
-    const data = await adminApi.updatePrivateDj(adminStore.adminPassword, update);
-    success(data.message);
-  } catch (e) {
-    error('功能开关更新失败');
-  }
-};
 
 const execPlayerAction = async (action) => {
   try {
@@ -437,26 +344,8 @@ const clearData = async (target) => {
   }
 };
 
-const updateCookie = async (platform, value) => {
-  if (!value) return;
-  try {
-    const data = await adminApi.setCookie(adminStore.adminPassword, platform, value);
-    success(data.message);
-  } catch (e) {
-    error('凭据更新失败');
-  }
-};
-
-const togglePlatform = async (platformId) => {
-  const current = playerStore.config[`${platformId}Enabled`];
-  const update = { [`${platformId}Enabled`]: !current };
-  try {
-    const data = await adminApi.updateConfig(adminStore.adminPassword, update);
-    success(data.message);
-  } catch (e) {
-    error('平台状态切换失败');
-  }
-};
+// 单一音源总开关
+const toggleSourceEnabled = () => updateInstantConfig({ mpEnabled: !playerStore.config.mpEnabled });
 
 const handleReset = async () => {
   if (!confirm('!!! 警告 !!! \n这将重置整个系统。 \n你确定要继续吗？')) return;

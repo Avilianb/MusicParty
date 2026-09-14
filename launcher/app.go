@@ -103,7 +103,6 @@ func (a *App) logToTerminal(msg string) {
 func (a *App) GetServiceStatuses() map[string]bool {
 	if a.manager == nil {
 		return map[string]bool{
-			"NETEASE_API": false,
 			"JAVA_SERVER": false,
 		}
 	}
@@ -142,14 +141,7 @@ func (a *App) StartServices() {
 
 	binDir := a.getBinDir()
 
-	// 1. 启动 Netease API
-	apiExe := filepath.Join(binDir, "netease-api.exe")
-	if runtime.GOOS != "windows" {
-		apiExe = filepath.Join(binDir, "netease-api")
-	}
-	a.manager.StartProcess("NETEASE_API", apiExe, "-p", "3000")
-
-	// 2. 启动 Java 后端
+	// 启动 Java 后端
 	javaExe := filepath.Join(binDir, "jre", "bin", "java.exe")
 	if _, err := os.Stat(javaExe); err != nil {
 		javaExe = "java"
@@ -157,6 +149,12 @@ func (a *App) StartServices() {
 	
 	jarPath := filepath.Join(binDir, "server.jar")
 	os.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	// 自建音源 MP：后端通过环境变量读取（与 Docker 部署保持同一套命名）
+	os.Setenv("MP_API_URL", a.cfg.MpApiUrl)
+	os.Setenv("MP_PUBLIC_URL", a.cfg.MpPublicUrl)
+	os.Setenv("MP_API_TOKEN", a.cfg.MpToken)
+	os.Setenv("MP_ENABLED", fmt.Sprintf("%v", a.cfg.MpEnabled))
 
 	args := []string{
 		"-jar", jarPath,
@@ -166,12 +164,6 @@ func (a *App) StartServices() {
 		fmt.Sprintf("--app.music-api.admin-password=%s", a.cfg.AdminPassword),
 		fmt.Sprintf("--app.music-api.author-name=%s", a.cfg.AuthorName),
 		fmt.Sprintf("--app.music-api.back-words=%s", a.cfg.BackWords),
-		fmt.Sprintf("--app.music-api.netease.base-url=http://127.0.0.1:3000"),
-		fmt.Sprintf("--app.music-api.netease.cookie=%s", a.cfg.NeteaseCookie),
-		fmt.Sprintf("--app.music-api.netease.quality=%s", a.cfg.NeteaseQuality),
-		fmt.Sprintf("--app.music-api.netease.enabled=%v", a.cfg.NeteaseEnabled),
-		fmt.Sprintf("--app.music-api.bilibili.cookie=%s", a.cfg.BiliCookie),
-		fmt.Sprintf("--app.music-api.bilibili.enabled=%v", a.cfg.BilibiliEnabled),
 		fmt.Sprintf("--app.music-api.queue.max-size=%d", a.cfg.QueueMaxSize),
 		fmt.Sprintf("--app.music-api.queue.history-size=%d", a.cfg.QueueHistorySize),
 		fmt.Sprintf("--app.music-api.queue.max-user-songs=%d", a.cfg.QueueMaxUserSongs),
@@ -179,7 +171,6 @@ func (a *App) StartServices() {
 		fmt.Sprintf("--app.music-api.chat.max-history-size=%d", a.cfg.ChatMaxHistorySize),
 		fmt.Sprintf("--app.music-api.chat.min-interval-ms=%d", a.cfg.ChatMinIntervalMs),
 		fmt.Sprintf("--app.music-api.chat.max-message-length=%d", a.cfg.ChatMaxMessageLength),
-		fmt.Sprintf("--app.music-api.cache.max-size=%s", a.cfg.CacheMaxSize),
 		fmt.Sprintf("--app.music-api.auth.rate-limit.enabled=%v", a.cfg.AuthRateLimitEnabled),
 		fmt.Sprintf("--app.music-api.auth.rate-limit.max-attempts=%d", a.cfg.AuthMaxAttempts),
 		fmt.Sprintf("--app.music-api.auth.rate-limit.window-seconds=%d", a.cfg.AuthWindowSeconds),

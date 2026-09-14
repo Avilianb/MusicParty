@@ -204,6 +204,7 @@ import { formatDuration } from '../utils/format';
 import { Download, ListOrdered, Repeat1, Shuffle, SkipForward, Play, Pause, Volume2, Volume1, VolumeX, ExternalLink, Zap, Lock } from 'lucide-vue-next';
 import CoverImage from './CoverImage.vue';
 import { useToast } from '../composables/useToast';
+import { mpSongUrl } from '../constants/api';
 
 const player = usePlayerStore();
 const ui = useUiStore();
@@ -298,6 +299,16 @@ const handleVolumeMouseUp = () => {
 };
 
 // --- 下载逻辑 ---
+// 扩展名跟随实际推流地址（自建音源缓存可能是 .flac 或 .mp3），不硬编码
+const resolveAudioExt = (url) => {
+  try {
+    const match = new URL(url).pathname.match(/\.([a-z0-9]+)$/i);
+    return match ? match[1].toLowerCase() : 'mp3';
+  } catch {
+    return 'mp3';
+  }
+};
+
 const downloadCurrentMusic = async () => {
   if (!nowPlaying.value) return;
   const music = nowPlaying.value.music;
@@ -309,7 +320,7 @@ const downloadCurrentMusic = async () => {
     const blobUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = `${music.name} - ${music.artists[0]}.mp3`;
+    link.download = `${music.name} - ${music.artists[0]}.${resolveAudioExt(music.url)}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -320,12 +331,10 @@ const downloadCurrentMusic = async () => {
   }
 };
 
-// 跳转源页面
+// 跳转源页面（单一音源：QQ 音乐歌曲页）
 const openSourcePage = () => {
   if (!nowPlaying.value) return;
-  const { platform, id } = nowPlaying.value.music;
-  let url = platform === 'netease' ? `https://music.163.com/#/song?id=${id}` : `https://www.bilibili.com/video/${id}`;
-  if (url) window.open(url, '_blank');
+  window.open(mpSongUrl(nowPlaying.value.music.id), '_blank');
 };
 
 onUnmounted(() => {

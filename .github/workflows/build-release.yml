@@ -62,18 +62,9 @@ jobs:
       run:
         shell: pwsh
     steps:
-      # A. 检出主仓库 (强制清理)
       - name: Checkout MusicParty
         uses: actions/checkout@v4
         with:
-          clean: true
-
-      # B. 检出正确的 Netease API 仓库到独立路径
-      - name: Checkout Netease API Enhanced
-        uses: actions/checkout@v4
-        with:
-          repository: NeteaseCloudMusicApiEnhanced/api-enhanced
-          path: external-api-source
           clean: true
 
       - name: Setup Node.js
@@ -121,13 +112,6 @@ jobs:
           # pwsh 给 mvn.cmd(批处理) 传带点号的 -D 参数会拆成 -Drevision=1 .3.5，Maven 把 .3.5 当生命周期阶段直接失败；用 cmd /c 包裹，改由 cmd 拆分参数
           cmd /c "mvn clean package -DskipTests -Drevision=${{ needs.setup.outputs.version }}"
 
-      # C. 编译 API EXE (使用官方 working-directory 隔离环境)
-      - name: Build Netease API EXE
-        working-directory: ./external-api-source
-        run: |
-          npm install
-          npx pkg . -t node18-win-x64 -o ../launcher/bin/netease-api.exe
-
       - name: Prepare Assets
         run: |
           if (-not (Test-Path "launcher/bin")) {
@@ -167,7 +151,6 @@ jobs:
           choco install upx
           echo "Compressing binaries with UPX..."
           upx --best "launcher/bin/ffmpeg.exe"
-          # 注意：不要压缩 netease-api.exe，因为它是由 pkg 打包的，压缩后会导致 'Pkg: Error reading from file' 错误
           # 注意：不建议压缩 server.jar，因为它是 ZIP 格式，UPX 处理效果不佳且可能破坏结构
 
       - name: Build Wails Launcher

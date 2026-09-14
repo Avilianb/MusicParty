@@ -3,6 +3,7 @@
 // 模块级单例：点赞页（CenterConsole）与搜索页（SearchModal）共享同一份响应式状态。
 import { ref } from 'vue';
 import { STORAGE_KEYS } from '../constants/keys';
+import { MP_PLATFORM } from '../constants/api';
 
 const likedSongs = ref([]);
 let loaded = false;
@@ -12,10 +13,16 @@ function load() {
   loaded = true;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.LIKED_SONGS);
-    likedSongs.value = raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    // 单一音源迁移：丢弃历史遗留的其它平台点赞记录
+    likedSongs.value = Array.isArray(parsed)
+      ? parsed.filter((s) => s && s.platform === MP_PLATFORM)
+      : [];
   } catch {
     likedSongs.value = [];
   }
+  // 回写迁移结果，避免每次启动都重复过滤
+  persist();
 }
 
 function persist() {

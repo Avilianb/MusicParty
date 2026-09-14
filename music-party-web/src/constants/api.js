@@ -31,3 +31,10 @@ export const WS_DEST = {
     USER_EVENTS: '/user/queue/events',
     USER_PRIVATE_CHAT: '/user/queue/chat/private'
 };
+
+// 唯一音源：自建 MP（QQ 音乐）平台 id，与后端 IMusicApiService 注册名一致。
+// 出现在 /api/{search,playlist,user,music/lyric}/{platform}/... 路由与 STOMP 载荷中。
+export const MP_PLATFORM = 'qq';
+
+// 平台歌曲页地址；id 为 QQ 音乐歌曲 mid
+export const mpSongUrl = (id) => `https://y.qq.com/n/ryqq/songDetail/${id}`;

@@ -4,17 +4,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.thornex.musicparty.config.AppProperties;
-import org.thornex.musicparty.dto.AdminPrivateDjUpdateRequest;
 import org.thornex.musicparty.dto.*;
 import org.thornex.musicparty.service.ChatService;
 import org.thornex.musicparty.service.MusicPlayerService;
-import org.thornex.musicparty.service.PrivateDjService;
-import org.thornex.musicparty.service.api.BilibiliMusicApiService;
-import org.thornex.musicparty.service.api.NeteaseMusicApiService;
 import org.thornex.musicparty.service.stream.LiveStreamService;
 
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -25,21 +20,15 @@ public class AdminController {
     private final AppProperties appProperties;
     private final String adminPassword;
     private final AuthController authController;
-    private final NeteaseMusicApiService neteaseMusicApiService;
-    private final BilibiliMusicApiService bilibiliMusicApiService;
     private final LiveStreamService liveStreamService;
-    private final PrivateDjService privateDjService;
 
-    public AdminController(MusicPlayerService musicPlayerService, ChatService chatService, AppProperties appProperties, AuthController authController, NeteaseMusicApiService neteaseMusicApiService, BilibiliMusicApiService bilibiliMusicApiService, LiveStreamService liveStreamService, PrivateDjService privateDjService) {
+    public AdminController(MusicPlayerService musicPlayerService, ChatService chatService, AppProperties appProperties, AuthController authController, LiveStreamService liveStreamService) {
         this.musicPlayerService = musicPlayerService;
         this.chatService = chatService;
         this.adminPassword = appProperties.getAdminPassword();
         this.appProperties = appProperties;
         this.authController = authController;
-        this.neteaseMusicApiService = neteaseMusicApiService;
-        this.bilibiliMusicApiService = bilibiliMusicApiService;
         this.liveStreamService = liveStreamService;
-        this.privateDjService = privateDjService;
     }
 
     private boolean isValid(String password) {
@@ -57,7 +46,7 @@ public class AdminController {
     @PostMapping("/lock")
     public ResponseEntity<?> setLock(@RequestHeader("X-Admin-Password") String password, @RequestBody AdminLockRequest request) {
         if (!isValid(password)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        
+
         String type = request.type().toUpperCase();
         if ("ALL".equalsIgnoreCase(type)) {
             musicPlayerService.setAllLocks(request.locked());
@@ -142,23 +131,6 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "系统核心已完成全量重置并重启"));
     }
 
-    @PostMapping("/config/cookie")
-    public ResponseEntity<?> setCookie(@RequestHeader("X-Admin-Password") String password, @RequestBody AdminCookieRequest request) {
-        if (!isValid(password)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-
-        if ("netease".equalsIgnoreCase(request.platform())) {
-            neteaseMusicApiService.updateCookie(request.value());
-            // 首次配置 cookie 后即时广播，刷新控制面板总开关门禁（neteaseCookieConfigured 来自 PlayerState）
-            musicPlayerService.broadcastFullPlayerState();
-            return ResponseEntity.ok(Map.of("message", "网易云音乐凭据已更新"));
-        } else if ("bilibili".equalsIgnoreCase(request.platform())) {
-            bilibiliMusicApiService.updateCookie(request.value());
-            return ResponseEntity.ok(Map.of("message", "Bilibili Cookie 已更新"));
-        } else {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
     @PostMapping("/room/stream")
     public ResponseEntity<?> setStream(@RequestHeader("X-Admin-Password") String password, @RequestBody AdminStreamRequest request) {
         if (!isValid(password)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -174,33 +146,6 @@ public class AdminController {
 
         musicPlayerService.updateConfig(request);
         return ResponseEntity.ok(Map.of("message", "系统配置已刷新"));
-    }
-
-    @PostMapping("/private-dj")
-    public ResponseEntity<?> updatePrivateDj(@RequestHeader("X-Admin-Password") String password,
-                                             @RequestBody AdminPrivateDjUpdateRequest request) {
-        if (!isValid(password)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-
-        AppProperties.PrivateDjConfig c = appProperties.getPrivateDj();
-
-        // 模式即开关：OFF=关闭 / FM=私人FM / DJ=私人DJ
-        if (request.mode() != null) {
-            if (!Set.of("OFF", "FM", "DJ").contains(request.mode())) {
-                return ResponseEntity.badRequest().body(Map.of("message", "模式仅支持 关闭/私人FM/私人DJ"));
-            }
-            // 切到 FM/DJ 视为开启私人电台，需先配置网易云 Cookie；切到 OFF 关闭则无需校验
-            if (!"OFF".equals(request.mode()) && !neteaseMusicApiService.isCookieConfigured()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "需先配置网易云 Cookie 才能开启私人电台"));
-            }
-            c.setMode(request.mode());
-        }
-        if (request.fillBlankEnabled() != null) c.setFillBlankEnabled(request.fillBlankEnabled());
-        if (request.joinQueueEnabled() != null) c.setJoinQueueEnabled(request.joinQueueEnabled());
-        if (request.custodyEnabled() != null) c.setCustodyEnabled(request.custodyEnabled());
-
-        privateDjService.invalidate();
-        musicPlayerService.broadcastFullPlayerState();
-        return ResponseEntity.ok(Map.of("message", "私人电台/私人DJ 配置已更新"));
     }
 
     // Keep compatibility for now or remove if sure
