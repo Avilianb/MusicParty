@@ -71,7 +71,7 @@
                   </div>
                 </div>
                 <button
-                    @click="addLikedClick(song)"
+                    @click="handleAddClick(song)"
                     :disabled="isInQueue(song.id) || pendingIds.has(song.id)"
                     class="ml-2 p-2 flex-shrink-0 transition-all duration-300"
                     :class="[
@@ -86,13 +86,6 @@
                   <Check v-else-if="isInQueue(song.id)" class="w-5 h-5" />
                   <!-- 状态 3: 普通添加按钮 -->
                   <PlusCircle v-else class="w-5 h-5"/>
-                </button>
-                <button
-                    @click="openLikedSource(song)"
-                    title="打开源页面"
-                    class="ml-1 p-2 flex-shrink-0 text-medical-300 hover:text-accent transition-all duration-300"
-                >
-                  <ExternalLink class="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -223,9 +216,9 @@ import { usePlayerStore } from '../stores/player';
 import { useSearchLogic } from '../composables/useSearchLogic';
 import { usePlaylistLogic } from '../composables/usePlaylistLogic';
 import { useLikedSongs } from '../composables/useLikedSongs';
-import { X, Search, PlusCircle, ListPlus, Loader2, ArrowLeft, ChevronRight, Check, ExternalLink } from 'lucide-vue-next';
+import { X, Search, PlusCircle, ListPlus, Loader2, ArrowLeft, ChevronRight, Check } from 'lucide-vue-next';
 import CoverImage from './CoverImage.vue';
-import { MP_PLATFORM, mpSongUrl } from '../constants/api';
+import { MP_PLATFORM } from '../constants/api';
 
 const props = defineProps(['isOpen']);
 const emit = defineEmits(['close']);
@@ -286,7 +279,7 @@ const isInQueue = (songId) => {
   return playerStore.queue.some(item => item.music.id === songId);
 };
 
-// 处理点击添加
+// 处理点击添加（列表项都带自己的 platform，单一音源下恒为 qq）
 const handleAddClick = (song) => {
   // 防抖：如果正在添加或已在队列，直接忽略
   if (pendingIds.value.has(song.id) || isInQueue(song.id)) return;
@@ -295,7 +288,7 @@ const handleAddClick = (song) => {
   pendingIds.value.add(song.id);
 
   // 2. 发送请求
-  playerStore.enqueue(platform.value, song.id);
+  playerStore.enqueue(song.platform || platform.value, song.id);
 
   // 3. 设定一个“冷却时间”用于视觉反馈 (2秒)
   // WebSocket 是异步的，我们不需要一直等到服务器返回，
@@ -303,21 +296,6 @@ const handleAddClick = (song) => {
   setTimeout(() => {
     pendingIds.value.delete(song.id);
   }, 2000);
-};
-
-// LikeSong 列表：添加（用该歌曲自身的平台入队）
-const addLikedClick = (song) => {
-  if (pendingIds.value.has(song.id) || isInQueue(song.id)) return;
-  pendingIds.value.add(song.id);
-  playerStore.enqueue(song.platform, song.id);
-  setTimeout(() => {
-    pendingIds.value.delete(song.id);
-  }, 2000);
-};
-
-// LikeSong 列表：跳转源页面（与播放控制器专辑封面逻辑一致）
-const openLikedSource = (song) => {
-  window.open(mpSongUrl(song.id), '_blank');
 };
 
 // 监听搜索动作 -> 自动切视图
